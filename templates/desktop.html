@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load static %}
+
+{% block currencylist %}
+<h3>Cryptocurrencies</h3>
+<div id="currency_list">
+
+</div>
+<div style="text-align: right; padding-right: 5px;">
+    <a style="text-align: right; margin-right: 5px;" id="loadMore" href="#">Load more</a>
+</div>
+<script type="text/template" id="currency_list_template">
+<table id="currency_table" style="border: solid 1px black; margin: 0; padding: 0; font-size: 10px;">
+    <tr>
+        <th>Currency</th>
+        <th>Price (EUR)</th>
+        <th style="width: 25%;">Change (last h)</th>
+        <th>Change (24h)</th>
+        <th>Change (7d)</th>
+    </tr>
+    <%
+        var i = 0;
+    %>
+    <% _.each(items, function(currency, key, arr) { %>
+        <%
+            var color1 = currency.history[0].percent_change_1h > 0 ? "green" : "red";
+            var color7 = currency.history[0].percent_change_7d > 0 ? "green" : "red";
+            var color24 = currency.history[0].percent_change_24h > 0 ? "green" : "red";
+            var bg = "";
+            var hide = "";
+
+            if ( i % 2 == 0 )
+            {
+                var bg = " background-color: rgb(180,180,180);";
+            }
+
+            if ( i >= currentListSize )
+            {
+                hide = ' style="display: none;"';
+            }
+        %>
+        <tr<%=hide%>>
+            <td style="font-weight: bold;<%=bg%>"><%-currency.name%></td>
+            <td style="text-align: right;<%=bg%>"><%-formatNumber(currency.history[0].price_eur)%></td>
+            <td style="text-align: right; color: <%-color1%>;<%=bg%>"><%-currency.history[0].percent_change_1h%>&#37;</td>
+            <td style="text-align: right; color: <%-color24%>;<%=bg%>"><%-currency.history[0].percent_change_24h%>&#37;</td>
+            <td style="text-align: right; color: <%-color7%>;<%=bg%>"><%-currency.history[0].percent_change_7d%>&#37;</td>
+            <td style="border: solid 1px black; text-align: center;">
+                <a href="#" class="addToDesktop" data-id="<%-i%>">&raquo;</a>
+            </td>
+        </tr>
+        <% i++; %>
+    <% }); %>
+</table>
+</script>
+{% endblock currencylist %}
+
+
+{% block content %}
+<h2>Desktop</h2>
+<ul>
+    <li><strong>Market cap total:</strong> {{ total_cap }} EUR</li>
+</ul>
+    <canvas id="cap_history" width="400" height="100"><!-- --></canvas>
+    <script type="text/javascript">
+    var cap_history = [];
+    var labels = [];
+    {% for cap in cap_history %}
+        cap_history.push({{cap.total_market_cap_eur}});
+        date = new Date({{ cap.last_updated }} * 1000);
+        labels.push(date.getHours() + ":" + date.getMinutes()); // @TODO user's timezone
+    {% endfor %}
+
+    // $('#cap_history').sparkline(cap_history.reverse(), {type: 'line', width: 200, height: 100});
+    var ctx = document.getElementById('cap_history').getContext('2d');
+
+    //console.log(cap_history.reverse());
+    data = cap_history.reverse();
+
+    var chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: labels.reverse(),
+        datasets: [{
+            label: 'Total market cap size',
+            data: data,
+            borderColor: 'orange',
+        }]
+    },
+    options: {
+        scales: {
+            yAxes: [{
+                ticks: {
+                    beginAtZero:true
+                }
+            }]
+        }
+    }
+});
+    </script>
+    <span>5 min changes in the last hour</span>
+<div id="desktop_currencies">
+
+
+</div>
+<div style="clear: both;"><!-- --></div>
+
+
+<script type="text/template" id="currency_details_template">
+    <% var i = 0; %>
+    <% _.each(items, function(currency, key, arr) { %>
+
+        <%
+            var change1hColor = currency.history[0].percent_change_1h > 0 ? 'green' : 'red';
+            var change24hColor = currency.history[0].percent_change_24h > 0 ? 'green' : 'red';
+            var change7dColor = currency.history[0].percent_change_7d > 0 ? 'green' : 'red';
+        %>
+
+        <div class="currency" style="float: left; margin-right: 20px; border: solid 1px gray; margin-top: 20px; font-size: 11px;">
+            <a style="text-align: center; display: block; width: 15px; height: 15px; padding: 5px; float: right; margin: 5px 5px 5px 5px; border: solid 1px red; color: red;"
+               href="#" class="close" data-id="<%-i%>">X</a>
+            <h3 style="text-align: center;"><%-currency.name%></h3>
+            <h4 style="text-align: center;">Price change in the last hour (EUR):</h4>
+            <span class="sparkline" id="sparkline_eur_<%-i%>" data-type="eur" data-id="<%-i%>" style="width: 200px; height: 100px; margin-left: 40px;"><!-- --></span>
+            <h4 style="text-align: center;">Price change in the last hour (BTC):</h4>
+            <span class="sparkline" id="sparkline_btc_<%-i%>" data-type="btc" data-id="<%-i%>" style="width: 200px; height: 100px; margin-left: 40px;"><!-- --></span>
+            <ul>
+                <li><strong>Change (1h)</strong>: <span style="color: <%-change1hColor%>;"><%-formatChange(currency.history[0].percent_change_1h)%>&#37;</span></li>
+                <li><strong>Change(24h)</strong>: <span style="color: <%-change24hColor%>;"><%-formatChange(currency.history[0].percent_change_24h)%>&#37;</span></li>
+                <li><strong>Change (7d)</strong>: <span style="color: <%-change7dColor%>;"><%-formatChange(currency.history[0].percent_change_7d)%>&#37;</span></li>
+                <li><strong>Price (EUR)</strong>: <%-formatNumber(currency.history[0].price_eur)%></li>
+                <li><strong>Price (BTC)</strong>: <%-formatNumber(currency.history[0].price_btc)%></li>
+                <li><strong>Max supply</strong>: <%-formatNumber(currency.history[0].max_supply)%></li>
+                <li><strong>Total supply</strong>: <%-formatNumber(currency.history[0].total_supply)%></li>
+                <li><strong>Market cap (EUR)</strong>: <%-formatNumber(currency.history[0].market_cap_eur)%></li>
+                <li><strong>Last updated</strong>: <%-showDate(currency.history[0].last_updated)%></li>
+                <li><strong>Symbol</strong>: <%-currency.symbol%></li>
+                <li><strong>Rank</strong>: <%-currency.history[0].rank%></li>
+            </ul>
+        </div>
+        <% i++; %>
+    <% }); %>
+</script>
+<script type="text/javascript" src="{% static 'js/currencies.js' %}"></script>
+{% endblock %}
